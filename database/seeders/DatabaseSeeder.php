@@ -20,6 +20,9 @@ class DatabaseSeeder extends Seeder
             RolesTableSeeder::class,
             RolesHasPermissionTableSeeder::class,
             ModelHasRoleTableSeeder::class,
+            UnitsTableSeeder::class,
+            AreasTableSeeder::class,
+            WallNoticesTableSeeder::class,
         ]);
     }
 }

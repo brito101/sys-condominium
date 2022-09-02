@@ -19,12 +19,14 @@ class UsersTableSeeder extends Seeder
             [
                 'name'      => 'Programador',
                 'email'     => env('PROGRAMMER_EMAIL'),
+                'document_person' => '00000000000',
                 'password'  => bcrypt(env('PROGRAMMER_PASSWD')),
                 'created_at' => new DateTime('now')
             ],
             [
                 'name'      => 'Administrator',
                 'email'     => env('ADMIN_EMAIL'),
+                'document_person' => '11111111111',
                 'password'  => bcrypt(env('ADMIN_PASSWD')),
                 'created_at' => new DateTime('now')
             ],

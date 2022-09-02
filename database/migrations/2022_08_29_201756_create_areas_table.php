@@ -17,7 +17,7 @@ class CreateAreasTable extends Migration
             $table->id();
             $table->boolean('allowed')->default(true);
             $table->string('title');
-            $table->string('cover');
+            $table->string('cover')->nullable();
             $table->string('days');
             $table->time('start');
             $table->time('end');

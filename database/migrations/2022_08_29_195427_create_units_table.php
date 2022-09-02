@@ -16,7 +16,7 @@ class CreateUnitsTable extends Migration
         Schema::create('units', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->unsignedBigInteger('owner');
+            $table->unsignedBigInteger('owner')->nullable();
             $table->foreign('owner')
                 ->references('id')
                 ->on('users')
