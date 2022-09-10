@@ -35,7 +35,28 @@ class WallNoticeController extends Controller
         return $array;
     }
 
-    public function like()
+    public function like($id)
     {
+        $array = ['error' => ''];
+        $user = \auth()->user();
+
+        $myLike = WallNoticeLike::where('wall_notice_id', $id)->where('user_id', $user->id)->count();
+
+        if ($myLike > 0) {
+            WallNoticeLike::where('wall_notice_id', $id)->where('user_id', $user->id)->delete();
+            $array['liked'] = false;
+        } else {
+
+            $wallNotice = new WallNoticeLike();
+            $wallNotice->wall_notice_id = $id;
+            $wallNotice->user_id = $user->id;
+            $wallNotice->save();
+
+            $array['liked'] = true;
+        }
+
+        $array['likes'] = WallNoticeLike::where('wall_notice_id', $id)->count();
+
+        return $array;
     }
 }
