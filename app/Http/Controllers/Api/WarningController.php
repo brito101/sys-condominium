@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Unit;
 use App\Models\Warning;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class WarningController extends Controller
 {
@@ -21,13 +23,15 @@ class WarningController extends Controller
 
         foreach ($warnings as $key => $value) {
             $photoList = [];
-            $photos = explode(',', $value['photos']);
+            if (!empty($value['photos'])) {
+                $photos = explode(',', $value['photos']);
 
-            foreach ($photos as $photo) {
-                $photoList[] = asset('storage/' . $photo);
+                foreach ($photos as $photo) {
+                    $photoList[] = asset('storage/warnings/' . $photo);
+                }
+
+                $warnings[$key]['photos'] = $photoList;
             }
-
-            $warnings[$key]['photos'] = $photoList;
         }
 
         $array['list'] = $warnings;
@@ -35,18 +39,56 @@ class WarningController extends Controller
         return $array;
     }
 
-    public function setWarning()
+    public function setWarning(Request $request)
     {
         $array = ['error' => ''];
-        $user = \auth()->user();
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required',
+            'property' => 'required',
+        ]);
+
+        if (!$validator->fails()) {
+            $list = $request->input('list');
+
+            $warning = new Warning();
+            $warning->title = $request->title;
+            $warning->unit_id = $request->property;
+            $warning->status = 'in review';
+
+            if ($list && \is_array($list)) {
+                $photos = [];
+
+                foreach ($list as $item) {
+                    $url = explode('/', $item);
+                    $photos[] = end($url);
+                }
+
+                $warning->photos = implode(',', $photos);
+            }
+
+            $warning->save();
+        } else {
+            $array['error'] = $validator->errors()->first();
+        }
 
         return $array;
     }
 
-    public function addWarningFile()
+    public function addWarningFile(Request $request)
     {
         $array = ['error' => ''];
-        $user = \auth()->user();
+
+        $validator = Validator::make($request->all(), [
+            'photo' => 'required|file|mimes:png,jpg'
+        ]);
+
+        if (!$validator->fails()) {
+            $file = $request->file('photo')->store('warnings');
+            $array['photo'] = asset(Storage::url($file));
+        } else {
+            $array['error'] = $validator->errors()->first();
+        }
 
         return $array;
     }
