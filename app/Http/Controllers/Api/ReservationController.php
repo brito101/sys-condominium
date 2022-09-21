@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Area;
 use App\Models\AreaDisabledDay;
 use App\Models\Reservation;
+use App\Models\Unit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class ReservationController extends Controller
@@ -68,9 +70,65 @@ class ReservationController extends Controller
         return $array;
     }
 
-    public function addMyReservations()
+    public function addMyReservations($id, Request $request)
     {
         $array = ['error' => ''];
+
+        $validator = Validator::make($request->all(), [
+            'date' => 'required|date_format:Y-m-d',
+            'time' => 'required|date_format:H:i:s',
+            'property' => 'required',
+        ]);
+
+        if (!$validator->fails()) {
+            $unit = Unit::find($request->input('property'));
+            $area = Area::find($id);
+            $date = $request->input('date');
+            $time = $request->input('time');
+
+            if ($unit && $area) {
+                $can = true;
+
+                $allowedDays = explode(",", $area['days']);
+                $wd = date('w', strtotime($date));
+
+                if (!\in_array($wd, $allowedDays)) {
+                    $can = false;
+                } else {
+                    $start = \strtotime($area['start']);
+                    $end = \strtotime('-1 hour', strtotime($area['end']));
+                    $revTime = \strtotime($time);
+                    if ($revTime < $start || $revTime > $end) {
+                        $can = false;
+                    }
+                }
+
+                $disabledDays = AreaDisabledDay::where('area_id', $id)->where('day', $date)->count();
+                if ($disabledDays > 0) {
+                    $can = false;
+                }
+
+                $reservations = Reservation::where('area_id', $id)->where('reservation_date', $date . ' ' . $time)->count();
+                if ($reservations > 0) {
+                    $can = false;
+                }
+
+                if ($can) {
+                    $reservation = new Reservation();
+                    $reservation->unit_id = $unit->id;
+                    $reservation->area_id = $id;
+                    $reservation->reservation_date = $date . ' ' . $time;
+                    $reservation->save();
+                } else {
+                    $array['error'] = "Reserva não permitida para este dia/hora";
+                }
+            } else {
+                $array['error'] = "Dados incorretos";
+            }
+        } else {
+            $array['error'] = $validator->errors()->first();
+        }
+
         return $array;
     }
 
@@ -182,15 +240,56 @@ class ReservationController extends Controller
         return $array;
     }
 
-    public function getMyReservations()
+    public function getMyReservations(Request $request)
     {
-        $array = ['error' => ''];
+        $array = ['error' => '', 'list' => []];
+
+        $property = $request->input('property');
+
+        $unit = Unit::find($property);
+
+        if ($unit) {
+            $reservations = Reservation::where('unit_id', $property)
+                ->orderBy('reservation_date', 'desc')->get();
+
+            foreach ($reservations as $reservation) {
+                $area = Area::find($reservation['area_id']);
+                $dateRev = date('d/m/Y H:i', strtotime($reservation['reservation_date']));
+                $afterTime = date('H:i', strtotime('+1 hour', strtotime($reservation['reservation_date'])));
+
+                $dateRev .= ' à ' . $afterTime;
+
+                $array['list'][] = [
+                    'id' => $reservation['id'],
+                    'area_id' => $reservation['area_id'],
+                    'area' => $area['title'],
+                    'cover' => asset('storage/' . $area['cover']),
+                    'dateRev' => $dateRev
+                ];
+            }
+        } else {
+            $array['error'] = 'Propriedade não encontrada';
+        }
+
         return $array;
     }
 
-    public function deleteMyReservations()
+    public function deleteMyReservations($id)
     {
         $array = ['error' => ''];
+
+        $reservation = Reservation::find($id);
+        if ($reservation) {
+            $unit = Unit::where('owner', Auth::user()->id)->where('id', $reservation['unit_id'])->first();
+            if ($unit) {
+                $reservation->delete();
+            } else {
+                $array['error'] = 'Exclusão inválida';
+            }
+        } else {
+            $array['error'] = 'Reserva não encontrada';
+        }
+
         return $array;
     }
 }
